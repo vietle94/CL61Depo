@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "cl61"
+version = "0.1.0"
+description = "CL61 analysis"
+requires-python = ">=3.12"
+dependencies = ["numpy", "requests", "xarray", "pandas", "matplotlib", "netCDF4", "seaborn", "scipy", "PyWavelets"]
+[tool.setuptools.packages.find]
+where = ["src/"]

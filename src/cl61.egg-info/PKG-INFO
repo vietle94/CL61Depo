@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: cl61
+Version: 0.1.0
+Summary: CL61 analysis
+Requires-Python: >=3.12
+Requires-Dist: numpy
+Requires-Dist: requests
+Requires-Dist: xarray
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Requires-Dist: netCDF4
+Requires-Dist: seaborn
+Requires-Dist: scipy
+Requires-Dist: PyWavelets

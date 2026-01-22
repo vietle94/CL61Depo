@@ -1,0 +1,9 @@
+numpy
+requests
+xarray
+pandas
+matplotlib
+netCDF4
+seaborn
+scipy
+PyWavelets
