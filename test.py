@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import importlib.resources
-from cl61.fetch.processing import cloud_calibration
 
 with importlib.resources.files("cl61.fetch").joinpath("cal_ref.npy").open("rb") as f:
     ref = np.load(f)
@@ -27,6 +26,7 @@ metadata = requests.get(url, params).json()
 res = requests.get(metadata[3]["downloadUrl"])
 df = xr.open_dataset(io.BytesIO(res.content))
 df["depo"] = df["x_pol"] / df["p_pol"]
+
 
 # %%
 def convolve_1d(arr, kernel):
@@ -130,3 +130,4 @@ ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
 # ax.set_ylim(0, 600)
 fig.colorbar(p, ax=ax)
 # %%
+dd
