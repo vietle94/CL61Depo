@@ -129,9 +129,11 @@ def convolve_1d(arr, kernel):
     return np.convolve(arr, kernel, mode="same")
 
 
-def cloud_calibration(res):
+def liquid_cloud_save(res):
     df, _ = response(res)
     df = df.sel(range=slice(100, 5000))
+    df["depo"] = df["x_pol"] / df["p_pol"]
+
     result = xr.apply_ufunc(
         convolve_1d,
         df.beta_att,
@@ -149,7 +151,7 @@ def cloud_calibration(res):
         output_core_dims=[["range"]],
         vectorize=True,
     )
-    range_max = result.idxmax(dim="range")
+    range_max = result.idxmax(dim="range") 
     cross_correlation = result.max(dim="range").values
 
     sum_beta = df.beta_att.sum(dim="range")
@@ -158,16 +160,15 @@ def cloud_calibration(res):
 
     cloud_mask = (cloud_beta_percent > 0.9) & (cross_correlation > 3e-7)
     df = df.isel(time=cloud_mask.values)
-    range_max = range_max.isel(time=cloud_mask)
+    range_max = range_max.isel(time=cloud_mask) + 76.8
 
-    df_cloud = df.where(df.range < range_max + 76.8)
+    df_cloud = df.where(df.range < range_max + 400)
     df_cloud = df_cloud.where(
         df_cloud.beta_att.T / df_cloud.beta_att.max(dim="range") > 0.05
     )
-    df_cloud["depo"] = df_cloud["x_pol"] / df_cloud["p_pol"]
     cloud_base = df_cloud["depo"].idxmin(dim="range")
 
-    df_incloud = df_cloud.where(df_cloud.range > cloud_base)
+    df_incloud = df.where(df.range > cloud_base)
 
     n_time, n_range = df_incloud.depo.shape
 
@@ -186,18 +187,18 @@ def cloud_calibration(res):
     src_idx = first_idx[:, None] + range_idx
 
     # Assign values using broadcasting
-    shifted = df_incloud.depo.values[np.arange(n_time)[:, None], src_idx]
-
-    return pd.DataFrame(
+    depo_save = df_incloud.depo.values[np.arange(n_time)[:, None], src_idx]
+    beta_save = df_incloud.beta_att.values[np.arange(n_time)[:, None], src_idx]
+    summary = xr.Dataset(
         {
-            "datetime": result.time.values,
-            "cross_correlation": result.max(dim="range").values,
-            "etaS": 1 / (2 * sum_beta * 4.8),
-            "range": range_max,
-            "cloud_beta_percent": cloud_beta_sum / sum_beta,
-        }
+            "depo_save": (("time", "range"), depo_save),
+            "beta_save": (("time", "range"), beta_save),
+            "range_max": ("time", range_max.data),
+        },
+        coords={"time": df_incloud.time.values,
+                "range": np.arange(100)},
     )
-
+    return summary
 
 def cloud_detection(res):
     df = cloud_calibration(res)
