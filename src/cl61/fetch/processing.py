@@ -29,6 +29,9 @@ def fetch_processing(func, site, start_date, end_date, save_path):
         if not metadata:
             continue
         result = process_metadata(metadata, func)
+        if not result:
+            print("no cloud day")
+            return None
         print("saving")
         result.to_netcdf(save_path + i.strftime("%Y%m%d") + ".nc")
 

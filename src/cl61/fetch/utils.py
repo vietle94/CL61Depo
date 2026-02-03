@@ -35,11 +35,13 @@ def process_metadata_child(row, func):
             return None
 
 
-def process_metadata(metadata, func):
+def process_metadata(metadata, func) -> xr.Dataset | None:
     result = []
     with ProcessPoolExecutor() as exe:
         result = exe.map(process_metadata_child, metadata, repeat(func))
-        result = (ds for ds in result if ds is not None)
+        result = [ds for ds in result if ds is not None]
+    if not result:
+        return None
     df = xr.concat(result, dim="time")
     df = df.sortby("time")
     return df
