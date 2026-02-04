@@ -31,7 +31,7 @@ def fetch_processing(func, site, start_date, end_date, save_path):
         result = process_metadata(metadata, func)
         if not result:
             print("no cloud day")
-            return None
+            continue
         print("saving")
         result.to_netcdf(save_path + i.strftime("%Y%m%d") + ".nc")
 
@@ -40,11 +40,11 @@ def convolve_1d(arr, kernel):
     return np.convolve(arr, kernel, mode="same")
 
 
-def liquid_cloud_detection(res):
-    df = xr.open_dataset(res.content)
-    df = df.sel(range=slice(100, 5000))
-    df["depo"] = df["x_pol"] / df["p_pol"]
+def liquid_cloud_detection(df_full):
+    df_full = df_full.sel(range=slice(0, 6000))
+    df_full["depo"] = df_full["x_pol"] / df_full["p_pol"]
 
+    df = df_full.sel(range=slice(100, 5000))
     result = xr.apply_ufunc(
         convolve_1d,
         df.beta_att,
@@ -73,6 +73,7 @@ def liquid_cloud_detection(res):
     if not cloud_mask.values.any():
         print("no cloud")
         return None
+
     df = df.isel(time=cloud_mask.values)
     range_max = range_max.isel(time=cloud_mask) + 76.8
 
@@ -82,7 +83,7 @@ def liquid_cloud_detection(res):
     )
     cloud_base = df_cloud["depo"].idxmin(dim="range")
 
-    df_incloud = df.where(df.range > cloud_base)
+    df_incloud = df_full.where(df_full.range > cloud_base)
 
     n_time, n_range = df_incloud.depo.shape
 

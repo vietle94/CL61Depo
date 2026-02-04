@@ -15,7 +15,8 @@ def process_metadata_child(row, func):
                 print(row["filename"])
                 bad_file = False
                 res = requests.get(row["downloadUrl"])
-                result_ = func(res)
+                df = xr.open_dataset(res.content)
+                result_ = func(df)
                 return result_
             except ValueError as error:
                 i += 1
