@@ -15,7 +15,7 @@ def fetch_processing(func, site, start_date, end_date, save_path):
     pr = pd.period_range(start=start_date, end=end_date, freq="D")
 
     for i in pr:
-        if os.path.exists(save_path + i.strftime("%Y%m%d") + ".csv"):
+        if os.path.exists(save_path + i.strftime("%Y%m%d") + ".nc"):
             continue
         idate = i.strftime("%Y-%m-%d")
         print(idate)
