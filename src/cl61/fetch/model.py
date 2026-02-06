@@ -4,7 +4,7 @@ import glob
 import numpy as np
 
 
-def fetch_model(site, start_date, end_date, save_path):
+def fetch_model(site, start_date, end_date):
     """Download model data"""
     url = "https://cloudnet.fmi.fi/api/model-files"
     params = {
@@ -12,10 +12,9 @@ def fetch_model(site, start_date, end_date, save_path):
         "dateTo": end_date,
         "site": site,
     }
-    print(params)
     metadata = requests.get(url, params).json()
-    print(metadata)
     for row in metadata:
+        print(row["filename"])
         res = requests.get(row["downloadUrl"])
         df = xr.open_dataset(res.content)
         return df
@@ -27,12 +26,7 @@ def fetch_model_cloud(path):
         file_date = file.split("/")[-1].split(".")[0]
         idate = file_date[:4] + "-" + file_date[4:6] + "-" + file_date[6:]
         file_site = files[0].split("/")[-2].lower()
-        model = fetch_model(
-            file_site,
-            idate,
-            idate,
-            path,
-        )
+        model = fetch_model(file_site, idate, idate)
         df = xr.open_dataset(file)
         model = model[["temperature", "q", "height"]]
         model = model.reindex(
@@ -40,8 +34,13 @@ def fetch_model_cloud(path):
         )
         height_delta = np.abs(model["height"] - df.cloud_base)
         height_delta = height_delta.where(height_delta < 300)
+        height_delta = height_delta.fillna(np.inf)
+        mask = height_delta.min(dim="level") < np.inf
+        if (~mask).all():
+            continue
+        height_delta = height_delta.where(mask, drop=True)
+        model = model.where(mask, drop=True)
         closest_idx = height_delta.argmin(dim="level")
-        model.temperature.isel(level=closest_idx)
         result = xr.Dataset(
             {
                 "T": (("time"), model.temperature.isel(level=closest_idx).data),
