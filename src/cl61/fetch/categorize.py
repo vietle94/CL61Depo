@@ -1,9 +1,6 @@
-import pandas as pd
 import requests
-from cl61.fetch.utils import process_metadata
 import xarray as xr
 import numpy as np
-import os
 import importlib.resources
 import glob
 
