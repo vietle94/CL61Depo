@@ -4,12 +4,12 @@ import glob
 import numpy as np
 
 
-def fetch_model(site, start_date, end_date):
+def fetch_model(site, start_date):
     """Download model data"""
     url = "https://cloudnet.fmi.fi/api/model-files"
     params = {
         "dateFrom": start_date,
-        "dateTo": end_date,
+        "dateTo": start_date,
         "site": site,
     }
     metadata = requests.get(url, params).json()
@@ -26,7 +26,7 @@ def fetch_model_cloud(path):
         file_date = file.split("/")[-1].split(".")[0]
         idate = file_date[:4] + "-" + file_date[4:6] + "-" + file_date[6:]
         file_site = files[0].split("/")[-2].lower()
-        model = fetch_model(file_site, idate, idate)
+        model = fetch_model(file_site, idate)
         df = xr.open_dataset(file)
         result = process_model(model, df)
         if result is None:
