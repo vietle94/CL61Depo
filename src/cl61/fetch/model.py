@@ -28,24 +28,32 @@ def fetch_model_cloud(path):
         file_site = files[0].split("/")[-2].lower()
         model = fetch_model(file_site, idate, idate)
         df = xr.open_dataset(file)
-        model = model[["temperature", "q", "height"]]
-        model = model.reindex(
-            time=df.time, method="nearest", tolerance=np.timedelta64(30, "m")
-        )
-        height_delta = np.abs(model["height"] - df.cloud_base)
-        height_delta = height_delta.where(height_delta < 300)
-        height_delta = height_delta.fillna(np.inf)
-        mask = height_delta.min(dim="level") < np.inf
-        if (~mask).all():
+        result = process_model(model, df)
+        if result is None:
             continue
-        height_delta = height_delta.where(mask, drop=True)
-        model = model.where(mask, drop=True)
-        closest_idx = height_delta.argmin(dim="level")
-        result = xr.Dataset(
-            {
-                "T": (("time"), model.temperature.isel(level=closest_idx).data),
-                "q": (("time"), model.q.isel(level=closest_idx).data),
-            },
-            coords={"time": model.time.values},
-        )
-        result.to_netcdf(path + f"/model/{file_date}_model.nc")
+        else:
+            result.to_netcdf(path + f"/model/{file_date}_model.nc")
+
+
+def process_model(model, df):
+    model = model[["temperature", "q", "height"]]
+    model = model.reindex(
+        time=df.time, method="nearest", tolerance=np.timedelta64(30, "m")
+    )
+    height_delta = np.abs(model["height"] - df.cloud_base)
+    height_delta = height_delta.where(height_delta < 300)
+    height_delta = height_delta.fillna(np.inf)
+    mask = height_delta.min(dim="level") < np.inf
+    if (~mask).all():
+        return None
+    height_delta = height_delta.where(mask, drop=True)
+    model = model.where(mask, drop=True)
+    closest_idx = height_delta.argmin(dim="level")
+    result = xr.Dataset(
+        {
+            "T": (("time"), model.temperature.isel(level=closest_idx).data),
+            "q": (("time"), model.q.isel(level=closest_idx).data),
+        },
+        coords={"time": model.time.values},
+    )
+    return result
