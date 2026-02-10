@@ -15,7 +15,7 @@ def fetch_processing(func, site, start_date, end_date, save_path):
     pr = pd.period_range(start=start_date, end=end_date, freq="D")
 
     for i in pr:
-        if os.path.exists(save_path + i.strftime("%Y%m%d") + ".nc"):
+        if save_path and os.path.exists(save_path + i.strftime("%Y%m%d") + ".nc"):
             continue
         idate = i.strftime("%Y-%m-%d")
         print(idate)
@@ -32,8 +32,12 @@ def fetch_processing(func, site, start_date, end_date, save_path):
         if not result:
             print("no cloud day")
             continue
-        print("saving")
-        result.to_netcdf(save_path + i.strftime("%Y%m%d") + ".nc")
+        if save_path:
+            print("saving")
+            result.to_netcdf(save_path + i.strftime("%Y%m%d") + ".nc")
+        else:
+            print("returning")
+            return result
 
 
 def convolve_1d(arr, kernel):
