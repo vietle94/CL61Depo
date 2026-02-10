@@ -34,23 +34,29 @@ def fetch_lwc_cloud(path):
         if lwc is None:
             continue
         df = xr.open_dataset(file)
-        lwc = lwc.where(lwc.lwc_retrieval_status == 1)
-        lwc = lwc.reindex(
-            time=df.time, method="nearest", tolerance=np.timedelta64(30, "m")
-        )
-        lwc_adiabatic_full = lwc.lwc.differentiate("height")
-        mask = lwc_adiabatic_full.notnull()
-        if (~mask).all():
+        result = process_lwc(lwc, df)
+        if result is None:
             continue
+        else:
+            result.to_netcdf(path + f"/lwc/{file_date}_lwc.nc")
 
-        first_valid_idx = mask.argmax("height")
-        has_valid = mask.any("height")
 
-        lwc_adiabatic = lwc_adiabatic_full.isel(height=first_valid_idx).where(has_valid)
-        result = xr.Dataset(
-            {
-                "lwc_adiabatic": (("time"), lwc_adiabatic.data),
-            },
-            coords={"time": lwc_adiabatic.time.values},
-        )
-        result.to_netcdf(path + f"/lwc/{file_date}_lwc.nc")
+def process_lwc(lwc, df):
+    lwc = lwc.where(lwc.lwc_retrieval_status == 1)
+    lwc = lwc.reindex(time=df.time, method="nearest", tolerance=np.timedelta64(30, "m"))
+    lwc_adiabatic_full = lwc.lwc.differentiate("height")
+    mask = lwc_adiabatic_full.notnull()
+    if (~mask).all():
+        return None
+
+    first_valid_idx = mask.argmax("height")
+    has_valid = mask.any("height")
+
+    lwc_adiabatic = lwc_adiabatic_full.isel(height=first_valid_idx).where(has_valid)
+    result = xr.Dataset(
+        {
+            "lwc_adiabatic": (("time"), lwc_adiabatic.data),
+        },
+        coords={"time": lwc_adiabatic.time.values},
+    )
+    return result
