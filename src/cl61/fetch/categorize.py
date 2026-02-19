@@ -60,3 +60,36 @@ def process_lwc(lwc, df):
         coords={"time": lwc_adiabatic.time.values},
     )
     return result
+
+
+def fetch_cloud_time(path):
+    files = glob.glob(path + "/*.nc")
+    for file in files:
+        file_date = file.split("/")[-1].split(".")[0]
+        idate = file_date[:4] + "-" + file_date[4:6] + "-" + file_date[6:]
+        file_site = files[0].split("/")[-2].lower()
+        classi = fetch_categorize(file_site, idate, "classification")
+        if classi is None:
+            continue
+        df = xr.open_dataset(file)
+        classi = classi.reindex(
+            time=df.time, method="nearest", tolerance=np.timedelta64(30, "m")
+        )
+        h = xr.DataArray(np.arange(classi.sizes["height"]), dims="height")
+        bad_vals = [2, 3, 4, 5, 6, 7]
+        valid_time = (
+            ~(
+                classi.target_classification.isin(bad_vals)
+                & (h < (classi.target_classification == 1).argmax("height"))
+            ).any("height")
+        ) & (classi.target_classification == 1).any("height")
+        result = xr.Dataset(
+            {
+                "valid_time": (("time"), valid_time.data),
+            },
+            coords={"time": valid_time.time.values},
+        )
+        if result is None:
+            continue
+        else:
+            result.to_netcdf(path + f"/time/{file_date}_valid_time.nc")
