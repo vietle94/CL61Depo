@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 
 
-def depo_fit(df, gates=5):
+def depo_fit(df, gates=5, log=False):
     imax = df.beta.argmax("range")
     irange = xr.DataArray(
         np.arange(df.beta.sizes["range"]),
@@ -10,10 +10,15 @@ def depo_fit(df, gates=5):
         coords={"range": df.beta["range"]},
     )
 
-    mask_below = (irange <= imax) & (irange >= imax - gates)
+    mask_below = (irange <= imax + gates) & (irange >= imax - gates)
     depo = df["depo"].where(mask_below)
     # depo = df["depo"].isel(range=slice(0, gates))
+    # depo = df.where(df.beta > 1e-4).depo
+    # depo = np.log(depo)
+    if log:
+        depo = np.log(depo)
     fit = depo.polyfit("range", deg=1)
+    # fit = depo.polyfit("range", deg=1)
     slope = fit.polyfit_coefficients.sel(degree=1)
     intercept = fit.polyfit_coefficients.sel(degree=0)
 
@@ -27,6 +32,7 @@ def depo_fit(df, gates=5):
             "slope": ("time", slope.data),
             "intercept": ("time", intercept.data),
             "r2": ("time", r2.data),
+            "cloud_base": ("time", df.cloud_base.data),
         },
         coords={"time": depo.time.values},
     )
