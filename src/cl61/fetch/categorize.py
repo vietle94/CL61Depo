@@ -44,6 +44,7 @@ def fetch_lwc_cloud(path):
 def process_lwc(lwc, df):
     lwc = lwc.where(lwc.lwc_retrieval_status == 1)
     lwc = lwc.reindex(time=df.time, method="nearest", tolerance=np.timedelta64(30, "m"))
+    lwc = lwc.where(lwc.lwc_error.mean("height") < 0.75)
     lwc_adiabatic_full = lwc.lwc.differentiate("height")
     mask = lwc_adiabatic_full.notnull()
     if (~mask).all():
