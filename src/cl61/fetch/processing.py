@@ -44,8 +44,8 @@ def convolve_1d(arr, kernel):
     return np.convolve(arr, kernel, mode="same")
 
 
-def liquid_cloud_detection(df_full):
-    df_full = df_full.sel(range=slice(0, 6000))
+def liquid_cloud_detection(df_full_original):
+    df_full = df_full_original.sel(range=slice(0, 6000))
     df_full["depo"] = df_full["x_pol"] / df_full["p_pol"]
 
     df = df_full.sel(range=slice(100, 5000))
@@ -79,6 +79,12 @@ def liquid_cloud_detection(df_full):
         return None
 
     df = df.isel(time=cloud_mask.values)
+    beta_sum_fullsave = df_full_original.isel(time=cloud_mask.values).beta_att.sum(
+        dim="range"
+    )
+    depo_sum_fullsave = df_full_original.isel(time=cloud_mask.values).x_pol.sum(
+        dim="range"
+    ) / df_full_original.isel(time=cloud_mask.values).p_pol.sum(dim="range")
     range_max = range_max.isel(time=cloud_mask) + 76.8
 
     df_cloud = df.where(df.range < range_max + 400)
@@ -106,12 +112,26 @@ def liquid_cloud_detection(df_full):
     src_idx = first_idx[:, None] + range_idx
 
     # Assign values using broadcasting
+    xpol_save = df_incloud.x_pol.values[np.arange(n_time)[:, None], src_idx]
+    ppol_save = df_incloud.p_pol.values[np.arange(n_time)[:, None], src_idx]
     depo_save = df_incloud.depo.values[np.arange(n_time)[:, None], src_idx]
     beta_save = df_incloud.beta_att.values[np.arange(n_time)[:, None], src_idx]
+    beta_sum_save = beta_save.sum(axis=1)
+    depo_sum_save = xpol_save.sum(axis=1) / ppol_save.sum(axis=1)
     summary = xr.Dataset(
         {
             "depo": (("time", "range"), depo_save),
+            "x_pol": (("time", "range"), xpol_save),
+            "p_pol": (("time", "range"), ppol_save),
             "beta": (("time", "range"), beta_save),
+            "beta_sum_all": ("time", beta_sum_fullsave.values),
+            "depo_sum_all": ("time", depo_sum_fullsave.values),
+            "beta_sum_cloud": ("time", beta_sum_save),
+            "depo_sum_cloud": ("time", depo_sum_save),
+            "cross_correlation": (
+                "time",
+                cross_correlation[cloud_mask.values],
+            ),
             "cloud_base": ("time", cloud_base.data),
         },
         coords={"time": df_incloud.time.values, "range": np.arange(100)},
